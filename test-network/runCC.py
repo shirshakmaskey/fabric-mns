@@ -17,17 +17,17 @@ def scriptFunction():
         count = 0
         if header != None:
             for row in csv_reader:
-                f = open("./scripts/orgSelector.txt", "r")
-                myJson = json.loads(f.readline())
                 if os.path.exists("./scripts/orgSelector.txt"):
+                    f = open("./scripts/orgSelector.txt", "r")
+                    myJson = json.loads(f.readline())
                     if myJson['PeerNode'] == "Org5MSP":
                         jsonData["E"] = "0"
                     elif myJson["PeerNode"] == "Org4MSP":
                         jsonData["D"] = "0"
-                f.close()
+                    f.close()
                 command = ['/bin/bash', 'runCC.sh',
-                           str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), str(row[6]), str(row[7]), str(row[8]), str(row[9]), str(row[10]), jsonData["A"], jsonData['B'], jsonData['C'], jsonData['D'], jsonData['E']]
-                if count < 500:
+                           str(row[0]), str(row[1]), str(row[2]).replace(' ', '-'), str(row[3]), str(row[4]), str(row[5]), str(row[6]), str(row[7]), str(row[8]), str(row[9]), str(row[10]), jsonData["A"], jsonData['B'], jsonData['C'], jsonData['D'], jsonData['E']]
+                if count < 2:
                     process = subprocess.Popen(command,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE)

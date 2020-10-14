@@ -468,7 +468,7 @@ COMPOSE_FILE_ORG3=addOrg3/docker/docker-compose-org3.yaml
 # use go as the default language for chaincode
 CC_SRC_LANGUAGE="go"
 # Chaincode version
-CC_VERSION="3.0"
+CC_VERSION="1.0"
 # Chaincode definition sequence
 CC_SEQUENCE=1
 # default image tag
