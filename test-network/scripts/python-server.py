@@ -4,7 +4,10 @@ import joblib
 import json
 import os
 import memcache
+import calendar
+import time
 import warnings
+from collections import OrderedDict
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -27,6 +30,8 @@ mapChaincodeToNode = {
     '192.168.240.18': '192.168.240.10',
     '192.168.240.19': '192.168.240.13'
 }
+mc.set("addedBlock", 0, 7200)
+flag = OrderedDict()
 
 
 class reputationClientThread(threading.Thread):
@@ -39,6 +44,8 @@ class reputationClientThread(threading.Thread):
         if not mc.get(self.localClientAddress[0]):
             # print("going in if loop")
             mc.set(self.localClientAddress[0], 1, 7200)
+            mc.set(self.localClientAddress[0] +
+                   ":age", calendar.timegm(time.gmtime), 7200)
             local_dict = {self.localClientAddress[0]: mc.get(
                 self.localClientAddress[0])}
             clientArray.update(local_dict)
@@ -56,26 +63,41 @@ class reputationClientThread(threading.Thread):
         data = self.localClientSocket.recv(1024)
         print(data)
         msg = data.decode()
-        # response = calculate_reputation(json.loads(msg))
+        flag[msg][self.localClientAddress[0]] = 1
+        if len(flag) > 1:
+            for ip in flag[-2]:
+                for clientIp in ipToNameMap:
+                    if not clientIp in ip:
+                        if not mc.get(clientIp+":flag"):
+                            mc.set(clientIp+":flag", 1, 7200)
+                        mc.incr(clientIp)
+
         print("message from client ", json.loads(msg))
         self.localClientSocket.send(bytes(msg, 'UTF-8'))
         self.localClientSocket.close()
         print("Client at ", self.localClientAddress,
               " has successfully disconnected")
 
-    def calculate_reputation(self, data):
-        if(data != ''):
-            counter = 0
-            result = []
-            for y in data:
-                x = [float(x) for x in data[y]]
-                z = [x[0:5]]
-                result.append(loaded_model.predict(z)[0])
-            json_value = {'Mv1': str(result[0]), 'Mv2': str(
-                result[1]), 'Mv3': str(result[2])}
-            return json.dumps(json_value)
+
+def calculate_reputation(self, keyValue):
+    if(key != ''):
+        counter = 0
+        result = 5
+
+        input = []
+        input.append(calendar.timegm(time.gmtime)-mc.get(key+":age"))
+        input.append(mc.get(key))
+        input.append(mc.get(mc.get("addedBlock")))
+        input.append(mc.get(key+":flag"))
+        input.append(mc.get(key+":flag")/mc.get("addedBlock"))
+        x = [float(x) for x in input]
+        result = loaded_model.predict(x)[0]
+        if int(result) < 5:
+            return True
         else:
-            return json.dumps({'Mv1': '', 'Mv2': '', 'Mv3': ''})
+            return False
+    else:
+        return False
 
 
 def GoServerClient(peerName):
@@ -109,15 +131,18 @@ print("Server started")
 print("Waiting for client request..")
 
 max_count = 0
+min_count = 100000
 while True:
     server.listen(6)
     clientsocket, clientAddress = server.accept()
     newthread = reputationClientThread(clientAddress, clientsocket)
     newthread.start()
     for key, value in clientArray.items():
+        min_count = min(min_count, value)
+        mc.replace("addedBlock", min_count)
         max_count = max(max_count, value)
         print("max count", max_count, "current value ", value)
-        if (max_count-value) > 3:
+        if calculate_reputation(key):
             clientArray.pop(key)
             GoServerClient(key)
             break

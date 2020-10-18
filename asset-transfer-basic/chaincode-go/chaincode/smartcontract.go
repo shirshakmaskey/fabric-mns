@@ -1,6 +1,7 @@
 package chaincode
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -120,7 +121,7 @@ func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface,
 	if err != nil {
 		return err
 	}
-	testing := NodeTableData{"hello world"}
+	testing := NodeTableData{fmt.Sprintf("%x", sha256.Sum256([]byte(assetJSON)))}
 	mlJSONByte, err := json.Marshal(testing)
 	if err != nil {
 	}
